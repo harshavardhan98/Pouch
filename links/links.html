@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="links.css">
+  <title>Pouch - Saved Links</title>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="header-top">
+        <h1>Pouch</h1>
+        <div class="header-actions">
+          <button id="export-btn" class="btn btn-outline" title="Export links as JSON">Export</button>
+          <label class="btn btn-outline" title="Import links from JSON">
+            Import
+            <input type="file" id="import-input" accept=".json" hidden />
+          </label>
+        </div>
+      </div>
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="Search links by title, URL, or tag..." />
+      </div>
+      <div id="active-tags" class="active-tags"></div>
+    </header>
+
+    <main>
+      <div id="links-container" class="links-container"></div>
+      <div id="empty-state" class="empty-state hidden">
+        <p>No saved links yet.</p>
+        <p class="hint">Click the Pouch icon in the toolbar to save your first link.</p>
+      </div>
+    </main>
+  </div>
+
+  <script src="links.js"></script>
+</body>
+</html>
