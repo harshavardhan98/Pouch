@@ -132,9 +132,10 @@ async function deleteLink(id) {
   render();
 }
 
-// Export
-exportBtn.addEventListener("click", () => {
-  const data = JSON.stringify(allLinks, null, 2);
+// Export — always re-fetch from storage to get the latest data
+exportBtn.addEventListener("click", async () => {
+  const freshLinks = await chrome.runtime.sendMessage({ action: "getLinks" });
+  const data = JSON.stringify(freshLinks, null, 2);
   const blob = new Blob([data], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -185,6 +186,14 @@ importInput.addEventListener("change", async (e) => {
   render();
   alert(`Imported ${added} new link${added !== 1 ? "s" : ""}.`);
   importInput.value = "";
+});
+
+// Re-sync when storage changes (e.g. tags updated via popup in another tab)
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.links) {
+    allLinks = changes.links.newValue || [];
+    render();
+  }
 });
 
 init();
