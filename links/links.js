@@ -21,6 +21,7 @@
     sidebar: document.getElementById("tag-sidebar"),
     sidebarContent: document.getElementById("sidebar-content"),
     sidebarToggle: document.getElementById("sidebar-toggle"),
+    toastContainer: document.getElementById("toast-container"),
   };
 
   // ==========================================================================
@@ -47,6 +48,9 @@
     TagSidebar.setSortChangeCallback(() => {
       TagSidebar.render(allLinks, filterTags);
     });
+
+    // Initialize toast
+    Toast.init(elements.toastContainer);
 
     // Bind events
     bindEvents();
@@ -214,10 +218,29 @@
   // CRUD Operations
   // ==========================================================================
 
-  async function deleteLink(id) {
-    await chrome.runtime.sendMessage({ action: "deleteLink", id });
-    allLinks = allLinks.filter((l) => l.id !== id);
+  function deleteLink(id) {
+    // Find and remove the link from local state
+    const linkIndex = allLinks.findIndex((l) => l.id === id);
+    if (linkIndex === -1) return;
+
+    const deletedLink = allLinks[linkIndex];
+    allLinks.splice(linkIndex, 1);
     render();
+
+    // Show undo toast
+    Toast.showUndo({
+      message: "Link deleted",
+      onUndo: () => {
+        // Restore the link at its original position
+        allLinks.splice(linkIndex, 0, deletedLink);
+        render();
+      },
+      onExpire: async () => {
+        // Actually delete from storage
+        await chrome.runtime.sendMessage({ action: "deleteLink", id });
+      },
+      duration: 5000,
+    });
   }
 
   // ==========================================================================

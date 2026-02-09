@@ -38,7 +38,7 @@ describe("Links Page", () => {
       },
     ];
 
-    // Set up DOM (including sidebar elements)
+    // Set up DOM (including sidebar and toast elements)
     document.body.innerHTML = `
       <aside id="tag-sidebar" class="sidebar">
         <button id="sidebar-toggle" class="sidebar-toggle"></button>
@@ -53,6 +53,7 @@ describe("Links Page", () => {
         <input type="file" id="import-input" />
         <input type="file" id="pocket-import-input" />
       </div>
+      <div id="toast-container" class="toast-container"></div>
     `;
 
     // Mock chrome.runtime.sendMessage
@@ -87,6 +88,7 @@ describe("Links Page", () => {
     require("../links/modules/csv-parser.js");
     require("../links/modules/link-renderer.js");
     require("../links/modules/tag-sidebar.js");
+    require("../links/modules/toast.js");
   }
 
   function loadLinksScript() {
@@ -354,24 +356,102 @@ describe("Links Page", () => {
     });
   });
 
-  describe("Delete Link", () => {
-    test("should delete link when delete button is clicked", async () => {
+  describe("Delete Link with Undo", () => {
+    async function initWithFakeTimers() {
       loadLinksScript();
-      await waitForInit();
+      // Run the microtask queue for async init
+      await Promise.resolve();
+      jest.runAllTimers();
+      await Promise.resolve();
+    }
+
+    test("should remove link from DOM immediately when delete button is clicked", async () => {
+      jest.useFakeTimers();
+      await initWithFakeTimers();
 
       const container = document.getElementById("links-container");
       const deleteBtn = container.querySelector('.delete-btn[data-id="link-1"]');
       deleteBtn.click();
 
-      await waitForInit();
+      // Link should be removed from DOM immediately
+      const cards = container.querySelectorAll(".link-card");
+      expect(cards.length).toBe(2);
 
+      // But storage deletion should NOT be called yet (only getLinks was called)
+      const deleteCalls = chrome.runtime.sendMessage.mock.calls.filter(
+        (call) => call[0].action === "deleteLink"
+      );
+      expect(deleteCalls.length).toBe(0);
+
+      jest.useRealTimers();
+    });
+
+    test("should show undo toast when link is deleted", async () => {
+      jest.useFakeTimers();
+      await initWithFakeTimers();
+
+      const container = document.getElementById("links-container");
+      const deleteBtn = container.querySelector('.delete-btn[data-id="link-1"]');
+      deleteBtn.click();
+
+      // Advance just enough for requestAnimationFrame but not the expiration timer
+      jest.advanceTimersByTime(100);
+
+      const toastContainer = document.getElementById("toast-container");
+      expect(toastContainer.querySelector(".toast")).not.toBeNull();
+      expect(toastContainer.textContent).toContain("Link deleted");
+      expect(toastContainer.querySelector("#toast-undo-btn")).not.toBeNull();
+
+      jest.useRealTimers();
+    });
+
+    test("should restore link when undo is clicked", async () => {
+      jest.useFakeTimers();
+      await initWithFakeTimers();
+
+      const container = document.getElementById("links-container");
+      const deleteBtn = container.querySelector('.delete-btn[data-id="link-1"]');
+      deleteBtn.click();
+
+      // Link should be removed
+      expect(container.querySelectorAll(".link-card").length).toBe(2);
+
+      // Click undo
+      const toastContainer = document.getElementById("toast-container");
+      const undoBtn = toastContainer.querySelector("#toast-undo-btn");
+      undoBtn.click();
+
+      // Link should be restored
+      expect(container.querySelectorAll(".link-card").length).toBe(3);
+      expect(container.querySelector('.link-card[data-id="link-1"]')).not.toBeNull();
+
+      // Storage deletion should NOT have been called
+      const deleteCalls = chrome.runtime.sendMessage.mock.calls.filter(
+        (call) => call[0].action === "deleteLink"
+      );
+      expect(deleteCalls.length).toBe(0);
+
+      jest.useRealTimers();
+    });
+
+    test("should permanently delete after toast expires", async () => {
+      jest.useFakeTimers();
+      await initWithFakeTimers();
+
+      const container = document.getElementById("links-container");
+      const deleteBtn = container.querySelector('.delete-btn[data-id="link-1"]');
+      deleteBtn.click();
+
+      // Fast-forward past the toast duration (5000ms)
+      jest.advanceTimersByTime(5100);
+
+      // Now storage deletion should be called
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
         action: "deleteLink",
         id: "link-1",
       });
 
-      const cards = container.querySelectorAll(".link-card");
-      expect(cards.length).toBe(2);
+      jest.useRealTimers();
     });
 
     test("should remove the correct link from DOM", async () => {
@@ -382,10 +462,12 @@ describe("Links Page", () => {
       const deleteBtn = container.querySelector('.delete-btn[data-id="link-2"]');
       deleteBtn.click();
 
-      await waitForInit();
-
       const deletedCard = container.querySelector('.link-card[data-id="link-2"]');
       expect(deletedCard).toBeNull();
+
+      // Other links should still be present
+      expect(container.querySelector('.link-card[data-id="link-1"]')).not.toBeNull();
+      expect(container.querySelector('.link-card[data-id="link-3"]')).not.toBeNull();
     });
 
     test("should update sidebar tag counts after delete", async () => {
@@ -397,12 +479,56 @@ describe("Links Page", () => {
       const deleteBtn = container.querySelector('.delete-btn[data-id="link-2"]');
       deleteBtn.click();
 
-      await waitForInit();
-
       // "personal" tag should no longer appear in sidebar
       const sidebarContent = document.getElementById("sidebar-content");
       const personalTag = sidebarContent.querySelector('.sidebar-tag[data-tag="personal"]');
       expect(personalTag).toBeNull();
+    });
+
+    test("should hide toast when close button is clicked", async () => {
+      jest.useFakeTimers();
+      await initWithFakeTimers();
+
+      const container = document.getElementById("links-container");
+      const deleteBtn = container.querySelector('.delete-btn[data-id="link-1"]');
+      deleteBtn.click();
+
+      // Click close button
+      const toastContainer = document.getElementById("toast-container");
+      const closeBtn = toastContainer.querySelector("#toast-close-btn");
+      closeBtn.click();
+
+      // Storage deletion should be called (same as expire)
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+        action: "deleteLink",
+        id: "link-1",
+      });
+
+      jest.useRealTimers();
+    });
+
+    test("should restore link at original position when undone", async () => {
+      jest.useFakeTimers();
+      await initWithFakeTimers();
+
+      const container = document.getElementById("links-container");
+
+      // Delete the second link
+      const deleteBtn = container.querySelector('.delete-btn[data-id="link-2"]');
+      deleteBtn.click();
+
+      // Click undo
+      const toastContainer = document.getElementById("toast-container");
+      const undoBtn = toastContainer.querySelector("#toast-undo-btn");
+      undoBtn.click();
+
+      // Check the order - link-2 should be in the middle
+      const cards = container.querySelectorAll(".link-card");
+      expect(cards[0].dataset.id).toBe("link-1");
+      expect(cards[1].dataset.id).toBe("link-2");
+      expect(cards[2].dataset.id).toBe("link-3");
+
+      jest.useRealTimers();
     });
   });
 
