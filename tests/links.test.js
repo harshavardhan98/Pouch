@@ -38,15 +38,21 @@ describe("Links Page", () => {
       },
     ];
 
-    // Set up DOM
+    // Set up DOM (including sidebar elements)
     document.body.innerHTML = `
-      <input type="text" id="search-input" />
-      <div id="active-tags"></div>
-      <div id="links-container"></div>
-      <div id="empty-state" class="hidden"></div>
-      <button id="export-btn">Export</button>
-      <input type="file" id="import-input" />
-      <input type="file" id="pocket-import-input" />
+      <aside id="tag-sidebar" class="sidebar">
+        <button id="sidebar-toggle" class="sidebar-toggle"></button>
+        <div id="sidebar-content" class="sidebar-content"></div>
+      </aside>
+      <div class="main-content">
+        <input type="text" id="search-input" />
+        <div id="active-tags"></div>
+        <div id="links-container"></div>
+        <div id="empty-state" class="hidden"></div>
+        <button id="export-btn">Export</button>
+        <input type="file" id="import-input" />
+        <input type="file" id="pocket-import-input" />
+      </div>
     `;
 
     // Mock chrome.runtime.sendMessage
@@ -72,9 +78,19 @@ describe("Links Page", () => {
     jest.restoreAllMocks();
   });
 
-  function loadLinksScript() {
-    // Clear module cache to reload fresh
+  function loadModules() {
+    // Clear module cache
     jest.resetModules();
+
+    // Load modules in order (they add to global scope)
+    require("../links/modules/utils.js");
+    require("../links/modules/csv-parser.js");
+    require("../links/modules/link-renderer.js");
+    require("../links/modules/tag-sidebar.js");
+  }
+
+  function loadLinksScript() {
+    loadModules();
     return require("../links/links.js");
   }
 
@@ -109,6 +125,15 @@ describe("Links Page", () => {
       const emptyState = document.getElementById("empty-state");
       expect(emptyState.classList.contains("hidden")).toBe(false);
     });
+
+    test("should render sidebar with tags", async () => {
+      loadLinksScript();
+      await waitForInit();
+
+      const sidebarContent = document.getElementById("sidebar-content");
+      expect(sidebarContent.innerHTML).toContain("Tags");
+      expect(sidebarContent.querySelectorAll(".sidebar-tag").length).toBe(4); // work, reference, personal, docs
+    });
   });
 
   describe("Search Filtering", () => {
@@ -123,7 +148,7 @@ describe("Links Page", () => {
       const container = document.getElementById("links-container");
       const cards = container.querySelectorAll(".link-card");
       expect(cards.length).toBe(1);
-      expect(cards[0].querySelector(".link-title").textContent).toBe(
+      expect(cards[0].querySelector(".link-title").textContent.trim()).toBe(
         "Example Site"
       );
     });
@@ -139,7 +164,7 @@ describe("Links Page", () => {
       const container = document.getElementById("links-container");
       const cards = container.querySelectorAll(".link-card");
       expect(cards.length).toBe(1);
-      expect(cards[0].querySelector(".link-title").textContent).toBe(
+      expect(cards[0].querySelector(".link-title").textContent.trim()).toBe(
         "Test Page"
       );
     });
@@ -246,9 +271,86 @@ describe("Links Page", () => {
       // Only "Documentation" has both "work" AND "docs"
       const cards = container.querySelectorAll(".link-card");
       expect(cards.length).toBe(1);
-      expect(cards[0].querySelector(".link-title").textContent).toBe(
+      expect(cards[0].querySelector(".link-title").textContent.trim()).toBe(
         "Documentation"
       );
+    });
+  });
+
+  describe("Sidebar Tag Filtering", () => {
+    test("should filter by tag when sidebar tag is clicked", async () => {
+      loadLinksScript();
+      await waitForInit();
+
+      const sidebarContent = document.getElementById("sidebar-content");
+      const workTag = sidebarContent.querySelector('.sidebar-tag[data-tag="work"]');
+      workTag.click();
+
+      const container = document.getElementById("links-container");
+      const cards = container.querySelectorAll(".link-card");
+      expect(cards.length).toBe(2);
+    });
+
+    test("should toggle tag filter when sidebar tag is clicked again", async () => {
+      loadLinksScript();
+      await waitForInit();
+
+      const sidebarContent = document.getElementById("sidebar-content");
+
+      // Add filter
+      let workTag = sidebarContent.querySelector('.sidebar-tag[data-tag="work"]');
+      workTag.click();
+      let cards = document.getElementById("links-container").querySelectorAll(".link-card");
+      expect(cards.length).toBe(2);
+
+      // Remove filter - re-query because sidebar was re-rendered
+      workTag = sidebarContent.querySelector('.sidebar-tag[data-tag="work"]');
+      workTag.click();
+      cards = document.getElementById("links-container").querySelectorAll(".link-card");
+      expect(cards.length).toBe(3);
+    });
+
+    test("should show tag counts in sidebar", async () => {
+      loadLinksScript();
+      await waitForInit();
+
+      const sidebarContent = document.getElementById("sidebar-content");
+      const workTag = sidebarContent.querySelector('.sidebar-tag[data-tag="work"]');
+      const countElement = workTag.querySelector(".sidebar-tag-count");
+
+      expect(countElement.textContent).toBe("2"); // work appears on 2 links
+    });
+
+    test("should highlight active tag in sidebar", async () => {
+      loadLinksScript();
+      await waitForInit();
+
+      const sidebarContent = document.getElementById("sidebar-content");
+      const workTag = sidebarContent.querySelector('.sidebar-tag[data-tag="work"]');
+
+      workTag.click();
+
+      // Re-query after render
+      const updatedWorkTag = sidebarContent.querySelector('.sidebar-tag[data-tag="work"]');
+      expect(updatedWorkTag.classList.contains("active")).toBe(true);
+    });
+
+    test("should clear all filters when clear button is clicked", async () => {
+      loadLinksScript();
+      await waitForInit();
+
+      // Add a filter first
+      const sidebarContent = document.getElementById("sidebar-content");
+      const workTag = sidebarContent.querySelector('.sidebar-tag[data-tag="work"]');
+      workTag.click();
+
+      // Click clear filters
+      const clearBtn = sidebarContent.querySelector("#clear-filters");
+      clearBtn.click();
+
+      // Should show all links
+      const cards = document.getElementById("links-container").querySelectorAll(".link-card");
+      expect(cards.length).toBe(3);
     });
   });
 
@@ -284,6 +386,23 @@ describe("Links Page", () => {
 
       const deletedCard = container.querySelector('.link-card[data-id="link-2"]');
       expect(deletedCard).toBeNull();
+    });
+
+    test("should update sidebar tag counts after delete", async () => {
+      loadLinksScript();
+      await waitForInit();
+
+      // Delete link-2 which has "personal" tag
+      const container = document.getElementById("links-container");
+      const deleteBtn = container.querySelector('.delete-btn[data-id="link-2"]');
+      deleteBtn.click();
+
+      await waitForInit();
+
+      // "personal" tag should no longer appear in sidebar
+      const sidebarContent = document.getElementById("sidebar-content");
+      const personalTag = sidebarContent.querySelector('.sidebar-tag[data-tag="personal"]');
+      expect(personalTag).toBeNull();
     });
   });
 
@@ -724,7 +843,7 @@ Case Test,https://case.com/,1582312900,UPPERCASE|MixedCase,unread`;
 
       // Title text content should be escaped
       const titleElement = container.querySelector(".link-title");
-      expect(titleElement.textContent).toBe("<img src=x onerror=alert('xss')>");
+      expect(titleElement.textContent.trim()).toBe("<img src=x onerror=alert('xss')>");
 
       // Displayed URL should be escaped
       const urlElement = container.querySelector(".link-url");

@@ -8,36 +8,52 @@
 </head>
 <body>
   <div class="app">
-    <header>
-      <div class="header-top">
-        <h1>Pouch</h1>
-        <div class="header-actions">
-          <button id="export-btn" class="btn btn-outline" title="Export links as JSON">Export</button>
-          <label class="btn btn-outline" title="Import links from JSON">
-            Import JSON
-            <input type="file" id="import-input" accept=".json" hidden />
-          </label>
-          <label class="btn btn-outline" title="Import from Pocket CSV export">
-            Import Pocket CSV
-            <input type="file" id="pocket-import-input" accept=".csv" hidden />
-          </label>
-        </div>
-      </div>
-      <div class="search-bar">
-        <input type="text" id="search-input" placeholder="Search links by title, URL, or tag..." />
-      </div>
-      <div id="active-tags" class="active-tags"></div>
-    </header>
+    <!-- Sidebar -->
+    <aside id="tag-sidebar" class="sidebar">
+      <button id="sidebar-toggle" class="sidebar-toggle" title="Toggle sidebar">
+        <span class="sidebar-toggle-icon"></span>
+      </button>
+      <div id="sidebar-content" class="sidebar-content"></div>
+    </aside>
 
-    <main>
-      <div id="links-container" class="links-container"></div>
-      <div id="empty-state" class="empty-state hidden">
-        <p>No saved links yet.</p>
-        <p class="hint">Click the Pouch icon in the toolbar to save your first link.</p>
-      </div>
-    </main>
+    <!-- Main Content -->
+    <div class="main-content">
+      <header>
+        <div class="header-top">
+          <h1>Pouch</h1>
+          <div class="header-actions">
+            <button id="export-btn" class="btn btn-outline" title="Export links as JSON">Export</button>
+            <label class="btn btn-outline" title="Import links from JSON">
+              Import JSON
+              <input type="file" id="import-input" accept=".json" hidden />
+            </label>
+            <label class="btn btn-outline" title="Import from Pocket CSV export">
+              Import Pocket CSV
+              <input type="file" id="pocket-import-input" accept=".csv" hidden />
+            </label>
+          </div>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="search-input" placeholder="Search links by title, URL, or tag..." />
+        </div>
+        <div id="active-tags" class="active-tags"></div>
+      </header>
+
+      <main>
+        <div id="links-container" class="links-container"></div>
+        <div id="empty-state" class="empty-state hidden">
+          <p>No saved links yet.</p>
+          <p class="hint">Click the Pouch icon in the toolbar to save your first link.</p>
+        </div>
+      </main>
+    </div>
   </div>
 
+  <!-- Load modules in order -->
+  <script src="modules/utils.js"></script>
+  <script src="modules/csv-parser.js"></script>
+  <script src="modules/link-renderer.js"></script>
+  <script src="modules/tag-sidebar.js"></script>
   <script src="links.js"></script>
 </body>
 </html>

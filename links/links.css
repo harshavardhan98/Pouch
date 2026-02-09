@@ -1,3 +1,7 @@
+/* ==========================================================================
+   Base Styles
+   ========================================================================== */
+
 * {
   margin: 0;
   padding: 0;
@@ -11,11 +15,277 @@ body {
   min-height: 100vh;
 }
 
+/* ==========================================================================
+   Layout
+   ========================================================================== */
+
 .app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
   max-width: 720px;
   margin: 0 auto;
   padding: 24px 16px;
+  min-width: 0;
 }
+
+/* ==========================================================================
+   Sidebar
+   ========================================================================== */
+
+.sidebar {
+  width: 240px;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  padding: 16px 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  flex-shrink: 0;
+  transition: width 0.2s ease, padding 0.2s ease;
+}
+
+.sidebar.collapsed {
+  width: 48px;
+  padding: 16px 0;
+}
+
+.sidebar.collapsed .sidebar-content {
+  display: none;
+}
+
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 0 8px 12px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sidebar-toggle:hover {
+  background: #e5e7eb;
+}
+
+.sidebar-toggle-icon {
+  width: 14px;
+  height: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.sidebar-toggle-icon::before,
+.sidebar-toggle-icon::after {
+  content: "";
+  display: block;
+  height: 2px;
+  background: #6b7280;
+  border-radius: 1px;
+}
+
+.sidebar-toggle-icon::before {
+  width: 100%;
+}
+
+.sidebar-toggle-icon::after {
+  width: 60%;
+}
+
+.sidebar-content {
+  padding: 0 12px;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.sidebar-header h2 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-sort {
+  display: flex;
+  gap: 2px;
+}
+
+.sort-btn {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sort-btn:hover {
+  color: #6b7280;
+  background: #f3f4f6;
+}
+
+.sort-btn.active {
+  color: #2563eb;
+  background: #eff6ff;
+  border-color: #dbeafe;
+}
+
+.sidebar-clear-btn {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sidebar-clear-btn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.sidebar-tags {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-tag {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 8px 10px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.sidebar-tag:hover {
+  background: #f3f4f6;
+}
+
+.sidebar-tag.active {
+  background: #eff6ff;
+  border-color: #dbeafe;
+}
+
+.sidebar-tag-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-tag.active .sidebar-tag-name {
+  color: #1d4ed8;
+}
+
+.sidebar-tag-count {
+  font-size: 11px;
+  font-weight: 500;
+  color: #9ca3af;
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.sidebar-tag.active .sidebar-tag-count {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.sidebar-empty {
+  padding: 20px 12px;
+  text-align: center;
+}
+
+.sidebar-empty p {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.sidebar-footer {
+  padding: 12px 4px 0;
+  margin-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.sidebar-footer span {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* Responsive: Hide sidebar on small screens */
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 100;
+    transform: translateX(-100%);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar.collapsed {
+    transform: translateX(-100%);
+  }
+
+  .sidebar-toggle {
+    position: fixed;
+    left: 8px;
+    top: 8px;
+    z-index: 101;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .main-content {
+    padding-top: 56px;
+  }
+}
+
+/* ==========================================================================
+   Header
+   ========================================================================== */
 
 header {
   margin-bottom: 24px;
@@ -26,6 +296,8 @@ header {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 header h1 {
@@ -37,7 +309,12 @@ header h1 {
 .header-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
 
 .btn {
   padding: 7px 14px;
@@ -69,6 +346,10 @@ header h1 {
   background: #fef2f2;
 }
 
+/* ==========================================================================
+   Search
+   ========================================================================== */
+
 .search-bar input {
   width: 100%;
   padding: 10px 14px;
@@ -84,6 +365,10 @@ header h1 {
   border-color: #2563eb;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
 }
+
+/* ==========================================================================
+   Active Tags (Filter Pills)
+   ========================================================================== */
 
 .active-tags {
   display: flex;
@@ -114,11 +399,25 @@ header h1 {
   background: #1d4ed8;
 }
 
+/* ==========================================================================
+   Links Container
+   ========================================================================== */
+
 .links-container {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
+
+.no-results {
+  text-align: center;
+  color: #6b7280;
+  padding: 40px 0;
+}
+
+/* ==========================================================================
+   Link Card
+   ========================================================================== */
 
 .link-card {
   background: #fff;
@@ -202,6 +501,10 @@ header h1 {
 .link-actions {
   flex-shrink: 0;
 }
+
+/* ==========================================================================
+   Empty State
+   ========================================================================== */
 
 .empty-state {
   text-align: center;

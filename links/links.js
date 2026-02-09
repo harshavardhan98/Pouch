@@ -1,304 +1,330 @@
-const searchInput = document.getElementById("search-input");
-const activeTags = document.getElementById("active-tags");
-const linksContainer = document.getElementById("links-container");
-const emptyState = document.getElementById("empty-state");
-const exportBtn = document.getElementById("export-btn");
-const importInput = document.getElementById("import-input");
-const pocketImportInput = document.getElementById("pocket-import-input");
+/**
+ * Pouch Links Page - Main Controller
+ * Manages the saved links view with search, filtering, and import/export
+ */
 
-let allLinks = [];
-let filterTags = [];
+(function () {
+  "use strict";
 
-async function init() {
-  allLinks = await chrome.runtime.sendMessage({ action: "getLinks" });
-  render();
-}
+  // ==========================================================================
+  // DOM Elements
+  // ==========================================================================
 
-function render() {
-  const query = searchInput.value.trim().toLowerCase();
-  let filtered = allLinks;
+  const elements = {
+    searchInput: document.getElementById("search-input"),
+    activeTags: document.getElementById("active-tags"),
+    linksContainer: document.getElementById("links-container"),
+    emptyState: document.getElementById("empty-state"),
+    exportBtn: document.getElementById("export-btn"),
+    importInput: document.getElementById("import-input"),
+    pocketImportInput: document.getElementById("pocket-import-input"),
+    sidebar: document.getElementById("tag-sidebar"),
+    sidebarContent: document.getElementById("sidebar-content"),
+    sidebarToggle: document.getElementById("sidebar-toggle"),
+  };
 
-  if (query) {
-    filtered = filtered.filter(
-      (l) =>
-        l.title.toLowerCase().includes(query) ||
-        l.url.toLowerCase().includes(query) ||
-        l.tags.some((t) => t.includes(query))
-    );
+  // ==========================================================================
+  // State
+  // ==========================================================================
+
+  let allLinks = [];
+  let filterTags = [];
+
+  // ==========================================================================
+  // Initialization
+  // ==========================================================================
+
+  async function init() {
+    allLinks = await chrome.runtime.sendMessage({ action: "getLinks" });
+
+    // Initialize sidebar
+    TagSidebar.init({
+      container: elements.sidebarContent,
+      onTagClick: handleSidebarTagClick,
+      onClearFilters: clearAllFilters,
+    });
+
+    TagSidebar.setSortChangeCallback(() => {
+      TagSidebar.render(allLinks, filterTags);
+    });
+
+    // Bind events
+    bindEvents();
+
+    // Initial render
+    render();
   }
 
-  if (filterTags.length > 0) {
-    filtered = filtered.filter((l) =>
-      filterTags.every((t) => l.tags.includes(t))
-    );
+  // ==========================================================================
+  // Event Binding
+  // ==========================================================================
+
+  function bindEvents() {
+    // Search
+    elements.searchInput.addEventListener("input", render);
+
+    // Tag filtering from link cards
+    elements.linksContainer.addEventListener("click", handleLinksContainerClick);
+
+    // Remove active tag filter
+    elements.activeTags.addEventListener("click", handleActiveTagsClick);
+
+    // Sidebar toggle
+    elements.sidebarToggle.addEventListener("click", toggleSidebar);
+
+    // Export
+    elements.exportBtn.addEventListener("click", handleExport);
+
+    // JSON Import
+    elements.importInput.addEventListener("change", handleJSONImport);
+
+    // Pocket CSV Import
+    elements.pocketImportInput.addEventListener("change", handlePocketImport);
+
+    // Re-sync when storage changes
+    chrome.storage.onChanged.addListener(handleStorageChange);
   }
 
-  renderActiveTags();
+  // ==========================================================================
+  // Rendering
+  // ==========================================================================
 
-  if (allLinks.length === 0) {
-    linksContainer.innerHTML = "";
-    emptyState.classList.remove("hidden");
-    return;
+  function render() {
+    const filtered = getFilteredLinks();
+
+    renderActiveTags();
+    renderSidebar();
+
+    if (allLinks.length === 0) {
+      elements.linksContainer.innerHTML = "";
+      elements.emptyState.classList.remove("hidden");
+      return;
+    }
+
+    elements.emptyState.classList.add("hidden");
+
+    if (filtered.length === 0) {
+      elements.linksContainer.innerHTML = LinkRenderer.renderNoResults();
+      return;
+    }
+
+    elements.linksContainer.innerHTML = LinkRenderer.renderCards(filtered);
   }
 
-  emptyState.classList.add("hidden");
-
-  if (filtered.length === 0) {
-    linksContainer.innerHTML =
-      '<p style="text-align:center;color:#6b7280;padding:40px 0;">No links match your search.</p>';
-    return;
+  function renderActiveTags() {
+    elements.activeTags.innerHTML = LinkRenderer.renderActiveFilters(filterTags);
   }
 
-  linksContainer.innerHTML = filtered.map(linkCardHTML).join("");
-}
+  function renderSidebar() {
+    TagSidebar.render(allLinks, filterTags);
+  }
 
-function linkCardHTML(link) {
-  const date = new Date(link.savedAt).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  // ==========================================================================
+  // Filtering
+  // ==========================================================================
 
-  const tagsHTML = link.tags
-    .map(
-      (t) =>
-        `<button class="tag" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>`
-    )
-    .join("");
+  function getFilteredLinks() {
+    const query = elements.searchInput.value.trim().toLowerCase();
+    let filtered = allLinks;
 
-  return `
-    <div class="link-card" data-id="${link.id}">
-      <div class="link-card-header">
-        <div class="link-info">
-          <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener" class="link-title">${escapeHtml(link.title)}</a>
-          <p class="link-url">${escapeHtml(link.url)}</p>
-          <p class="link-date">${date}</p>
-        </div>
-        <div class="link-actions">
-          <button class="btn btn-danger delete-btn" data-id="${link.id}" title="Delete">&#x2715;</button>
-        </div>
-      </div>
-      ${tagsHTML ? `<div class="link-tags">${tagsHTML}</div>` : ""}
-    </div>
-  `;
-}
+    if (query) {
+      filtered = filtered.filter(
+        (l) =>
+          l.title.toLowerCase().includes(query) ||
+          l.url.toLowerCase().includes(query) ||
+          l.tags.some((t) => t.includes(query))
+      );
+    }
 
-function renderActiveTags() {
-  activeTags.innerHTML = filterTags
-    .map(
-      (t) =>
-        `<button class="filter-tag" data-tag="${escapeHtml(t)}">${escapeHtml(t)} &times;</button>`
-    )
-    .join("");
-}
+    if (filterTags.length > 0) {
+      filtered = filtered.filter((l) =>
+        filterTags.every((t) => l.tags.includes(t))
+      );
+    }
 
-function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
-}
+    return filtered;
+  }
 
-// Search
-searchInput.addEventListener("input", () => render());
-
-// Tag filtering from link cards
-linksContainer.addEventListener("click", (e) => {
-  if (e.target.classList.contains("tag")) {
-    const tag = e.target.dataset.tag;
+  function addTagFilter(tag) {
     if (!filterTags.includes(tag)) {
       filterTags.push(tag);
       render();
     }
-    return;
   }
 
-  if (e.target.classList.contains("delete-btn")) {
-    const id = e.target.dataset.id;
-    deleteLink(id);
-  }
-});
-
-// Remove tag filter
-activeTags.addEventListener("click", (e) => {
-  if (e.target.classList.contains("filter-tag")) {
-    const tag = e.target.dataset.tag;
+  function removeTagFilter(tag) {
     filterTags = filterTags.filter((t) => t !== tag);
     render();
   }
-});
 
-async function deleteLink(id) {
-  await chrome.runtime.sendMessage({ action: "deleteLink", id });
-  allLinks = allLinks.filter((l) => l.id !== id);
-  render();
-}
-
-// Export — always re-fetch from storage to get the latest data
-exportBtn.addEventListener("click", async () => {
-  const freshLinks = await chrome.runtime.sendMessage({ action: "getLinks" });
-  const data = JSON.stringify(freshLinks, null, 2);
-  const blob = new Blob([data], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `pouch-export-${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-});
-
-// Import
-importInput.addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const text = await file.text();
-  let imported;
-  try {
-    imported = JSON.parse(text);
-  } catch {
-    alert("Invalid JSON file.");
-    return;
-  }
-
-  if (!Array.isArray(imported)) {
-    alert("Invalid format. Expected an array of links.");
-    return;
-  }
-
-  // Validate and merge
-  const existingUrls = new Set(allLinks.map((l) => l.url));
-  let added = 0;
-
-  for (const item of imported) {
-    if (!item.url || existingUrls.has(item.url)) continue;
-
-    allLinks.unshift({
-      id: item.id || crypto.randomUUID(),
-      url: item.url,
-      title: item.title || item.url,
-      tags: Array.isArray(item.tags) ? item.tags : [],
-      savedAt: item.savedAt || new Date().toISOString(),
-    });
-    existingUrls.add(item.url);
-    added++;
-  }
-
-  await chrome.storage.local.set({ links: allLinks });
-  render();
-  alert(`Imported ${added} new link${added !== 1 ? "s" : ""}.`);
-  importInput.value = "";
-});
-
-// Parse Pocket CSV format
-function parsePocketCSV(csvText) {
-  const lines = [];
-  let current = "";
-  let inQuotes = false;
-
-  // Handle quoted fields that may contain newlines
-  for (let i = 0; i < csvText.length; i++) {
-    const char = csvText[i];
-    if (char === '"') {
-      inQuotes = !inQuotes;
-      current += char;
-    } else if (char === "\n" && !inQuotes) {
-      if (current.trim()) lines.push(current);
-      current = "";
-    } else {
-      current += char;
-    }
-  }
-  if (current.trim()) lines.push(current);
-
-  // Skip header row
-  if (lines.length === 0) return [];
-  const dataLines = lines.slice(1);
-
-  return dataLines.map((line) => {
-    const fields = [];
-    let field = "";
-    let insideQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        if (insideQuotes && line[i + 1] === '"') {
-          field += '"';
-          i++;
-        } else {
-          insideQuotes = !insideQuotes;
-        }
-      } else if (char === "," && !insideQuotes) {
-        fields.push(field);
-        field = "";
-      } else {
-        field += char;
-      }
-    }
-    fields.push(field);
-
-    // Pocket CSV: title, url, time_added, tags, status
-    const [title, url, timeAdded, tags] = fields;
-    return {
-      title: title || url,
-      url: url,
-      savedAt: timeAdded
-        ? new Date(parseInt(timeAdded, 10) * 1000).toISOString()
-        : new Date().toISOString(),
-      tags: tags ? tags.split("|").map((t) => t.trim().toLowerCase()).filter(Boolean) : [],
-    };
-  });
-}
-
-// Import from Pocket CSV
-pocketImportInput.addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const text = await file.text();
-  let parsed;
-  try {
-    parsed = parsePocketCSV(text);
-  } catch {
-    alert("Failed to parse Pocket CSV file.");
-    return;
-  }
-
-  if (parsed.length === 0) {
-    alert("No links found in the CSV file.");
-    return;
-  }
-
-  // Validate and merge
-  const existingUrls = new Set(allLinks.map((l) => l.url));
-  let added = 0;
-
-  for (const item of parsed) {
-    if (!item.url || existingUrls.has(item.url)) continue;
-
-    allLinks.unshift({
-      id: crypto.randomUUID(),
-      url: item.url,
-      title: item.title || item.url,
-      tags: item.tags,
-      savedAt: item.savedAt,
-    });
-    existingUrls.add(item.url);
-    added++;
-  }
-
-  await chrome.storage.local.set({ links: allLinks });
-  render();
-  alert(`Imported ${added} new link${added !== 1 ? "s" : ""} from Pocket.`);
-  pocketImportInput.value = "";
-});
-
-// Re-sync when storage changes (e.g. tags updated via popup in another tab)
-chrome.storage.onChanged.addListener((changes) => {
-  if (changes.links) {
-    allLinks = changes.links.newValue || [];
+  function clearAllFilters() {
+    filterTags = [];
+    elements.searchInput.value = "";
     render();
   }
-});
 
-init();
+  // ==========================================================================
+  // Event Handlers
+  // ==========================================================================
+
+  function handleLinksContainerClick(e) {
+    if (e.target.classList.contains("tag")) {
+      addTagFilter(e.target.dataset.tag);
+      return;
+    }
+
+    if (e.target.classList.contains("delete-btn")) {
+      deleteLink(e.target.dataset.id);
+    }
+  }
+
+  function handleActiveTagsClick(e) {
+    if (e.target.classList.contains("filter-tag")) {
+      removeTagFilter(e.target.dataset.tag);
+    }
+  }
+
+  function handleSidebarTagClick(tag) {
+    if (filterTags.includes(tag)) {
+      removeTagFilter(tag);
+    } else {
+      addTagFilter(tag);
+    }
+  }
+
+  function toggleSidebar() {
+    const sidebar = elements.sidebar;
+    const isMobile = window.innerWidth <= 900;
+
+    if (isMobile) {
+      sidebar.classList.toggle("open");
+    } else {
+      sidebar.classList.toggle("collapsed");
+    }
+  }
+
+  function handleStorageChange(changes) {
+    if (changes.links) {
+      allLinks = changes.links.newValue || [];
+      render();
+    }
+  }
+
+  // ==========================================================================
+  // CRUD Operations
+  // ==========================================================================
+
+  async function deleteLink(id) {
+    await chrome.runtime.sendMessage({ action: "deleteLink", id });
+    allLinks = allLinks.filter((l) => l.id !== id);
+    render();
+  }
+
+  // ==========================================================================
+  // Export
+  // ==========================================================================
+
+  async function handleExport() {
+    const freshLinks = await chrome.runtime.sendMessage({ action: "getLinks" });
+    const data = JSON.stringify(freshLinks, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `pouch-export-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ==========================================================================
+  // JSON Import
+  // ==========================================================================
+
+  async function handleJSONImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const text = await file.text();
+    let imported;
+
+    try {
+      imported = JSON.parse(text);
+    } catch {
+      alert("Invalid JSON file.");
+      return;
+    }
+
+    if (!Array.isArray(imported)) {
+      alert("Invalid format. Expected an array of links.");
+      return;
+    }
+
+    const added = importLinks(imported);
+    await chrome.storage.local.set({ links: allLinks });
+    render();
+    alert(`Imported ${added} new link${added !== 1 ? "s" : ""}.`);
+    elements.importInput.value = "";
+  }
+
+  // ==========================================================================
+  // Pocket CSV Import
+  // ==========================================================================
+
+  async function handlePocketImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const text = await file.text();
+    let parsed;
+
+    try {
+      parsed = CSVParser.parsePocketCSV(text);
+    } catch {
+      alert("Failed to parse Pocket CSV file.");
+      return;
+    }
+
+    if (parsed.length === 0) {
+      alert("No links found in the CSV file.");
+      return;
+    }
+
+    const added = importLinks(parsed);
+    await chrome.storage.local.set({ links: allLinks });
+    render();
+    alert(`Imported ${added} new link${added !== 1 ? "s" : ""} from Pocket.`);
+    elements.pocketImportInput.value = "";
+  }
+
+  // ==========================================================================
+  // Import Helper
+  // ==========================================================================
+
+  function importLinks(items) {
+    const existingUrls = new Set(allLinks.map((l) => l.url));
+    let added = 0;
+
+    for (const item of items) {
+      if (!item.url || existingUrls.has(item.url)) continue;
+
+      allLinks.unshift({
+        id: item.id || crypto.randomUUID(),
+        url: item.url,
+        title: item.title || item.url,
+        tags: Array.isArray(item.tags) ? item.tags : [],
+        savedAt: item.savedAt || new Date().toISOString(),
+      });
+
+      existingUrls.add(item.url);
+      added++;
+    }
+
+    return added;
+  }
+
+  // ==========================================================================
+  // Start
+  // ==========================================================================
+
+  init();
+})();
