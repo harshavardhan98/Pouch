@@ -4,6 +4,7 @@ const linksContainer = document.getElementById("links-container");
 const emptyState = document.getElementById("empty-state");
 const exportBtn = document.getElementById("export-btn");
 const importInput = document.getElementById("import-input");
+const pocketImportInput = document.getElementById("pocket-import-input");
 
 let allLinks = [];
 let filterTags = [];
@@ -186,6 +187,110 @@ importInput.addEventListener("change", async (e) => {
   render();
   alert(`Imported ${added} new link${added !== 1 ? "s" : ""}.`);
   importInput.value = "";
+});
+
+// Parse Pocket CSV format
+function parsePocketCSV(csvText) {
+  const lines = [];
+  let current = "";
+  let inQuotes = false;
+
+  // Handle quoted fields that may contain newlines
+  for (let i = 0; i < csvText.length; i++) {
+    const char = csvText[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      current += char;
+    } else if (char === "\n" && !inQuotes) {
+      if (current.trim()) lines.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  if (current.trim()) lines.push(current);
+
+  // Skip header row
+  if (lines.length === 0) return [];
+  const dataLines = lines.slice(1);
+
+  return dataLines.map((line) => {
+    const fields = [];
+    let field = "";
+    let insideQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (insideQuotes && line[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          insideQuotes = !insideQuotes;
+        }
+      } else if (char === "," && !insideQuotes) {
+        fields.push(field);
+        field = "";
+      } else {
+        field += char;
+      }
+    }
+    fields.push(field);
+
+    // Pocket CSV: title, url, time_added, tags, status
+    const [title, url, timeAdded, tags] = fields;
+    return {
+      title: title || url,
+      url: url,
+      savedAt: timeAdded
+        ? new Date(parseInt(timeAdded, 10) * 1000).toISOString()
+        : new Date().toISOString(),
+      tags: tags ? tags.split("|").map((t) => t.trim().toLowerCase()).filter(Boolean) : [],
+    };
+  });
+}
+
+// Import from Pocket CSV
+pocketImportInput.addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const text = await file.text();
+  let parsed;
+  try {
+    parsed = parsePocketCSV(text);
+  } catch {
+    alert("Failed to parse Pocket CSV file.");
+    return;
+  }
+
+  if (parsed.length === 0) {
+    alert("No links found in the CSV file.");
+    return;
+  }
+
+  // Validate and merge
+  const existingUrls = new Set(allLinks.map((l) => l.url));
+  let added = 0;
+
+  for (const item of parsed) {
+    if (!item.url || existingUrls.has(item.url)) continue;
+
+    allLinks.unshift({
+      id: crypto.randomUUID(),
+      url: item.url,
+      title: item.title || item.url,
+      tags: item.tags,
+      savedAt: item.savedAt,
+    });
+    existingUrls.add(item.url);
+    added++;
+  }
+
+  await chrome.storage.local.set({ links: allLinks });
+  render();
+  alert(`Imported ${added} new link${added !== 1 ? "s" : ""} from Pocket.`);
+  pocketImportInput.value = "";
 });
 
 // Re-sync when storage changes (e.g. tags updated via popup in another tab)

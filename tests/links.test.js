@@ -46,6 +46,7 @@ describe("Links Page", () => {
       <div id="empty-state" class="hidden"></div>
       <button id="export-btn">Export</button>
       <input type="file" id="import-input" />
+      <input type="file" id="pocket-import-input" />
     `;
 
     // Mock chrome.runtime.sendMessage
@@ -311,6 +312,9 @@ describe("Links Page", () => {
       const exportBtn = document.getElementById("export-btn");
       exportBtn.click();
 
+      // Wait for async export to complete
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
       expect(global.URL.createObjectURL).toHaveBeenCalled();
       expect(createdAnchor).not.toBeNull();
       expect(createdAnchor.click).toHaveBeenCalled();
@@ -427,6 +431,239 @@ describe("Links Page", () => {
       expect(global.alert).toHaveBeenCalledWith(
         "Invalid format. Expected an array of links."
       );
+    });
+  });
+
+  describe("Pocket CSV Import", () => {
+    function createMockCSVFile(content) {
+      const blob = new Blob([content], { type: "text/csv" });
+      blob.name = "pocket-export.csv";
+      blob.text = () => Promise.resolve(content);
+      return blob;
+    }
+
+    test("should import links from valid Pocket CSV", async () => {
+      loadLinksScript();
+      await waitForInit();
+
+      const pocketInput = document.getElementById("pocket-import-input");
+      const csvContent = `title,url,time_added,tags,status
+Unix Toolbox,http://example.com/unix,1582312900,sre,unread
+Another Page,https://another.com/,1592198922,hacking,unread`;
+
+      const file = createMockCSVFile(csvContent);
+
+      Object.defineProperty(pocketInput, "files", {
+        value: [file],
+        configurable: true,
+      });
+
+      global.alert = jest.fn();
+
+      pocketInput.dispatchEvent(new Event("change"));
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(chrome.storage.local.set).toHaveBeenCalled();
+      expect(global.alert).toHaveBeenCalledWith(
+        "Imported 2 new links from Pocket."
+      );
+    });
+
+    test("should parse pipe-separated tags", async () => {
+      loadLinksScript();
+      await waitForInit();
+
+      const pocketInput = document.getElementById("pocket-import-input");
+      const csvContent = `title,url,time_added,tags,status
+Multi Tag Link,https://multitag.com/,1706156469,tag1|tag2|tag3,unread`;
+
+      const file = createMockCSVFile(csvContent);
+
+      Object.defineProperty(pocketInput, "files", {
+        value: [file],
+        configurable: true,
+      });
+
+      global.alert = jest.fn();
+
+      pocketInput.dispatchEvent(new Event("change"));
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Check that storage was called with the correct tags
+      const setCall = chrome.storage.local.set.mock.calls[0][0];
+      const importedLink = setCall.links.find(
+        (l) => l.url === "https://multitag.com/"
+      );
+      expect(importedLink.tags).toEqual(["tag1", "tag2", "tag3"]);
+    });
+
+    test("should handle links with no tags", async () => {
+      loadLinksScript();
+      await waitForInit();
+
+      const pocketInput = document.getElementById("pocket-import-input");
+      const csvContent = `title,url,time_added,tags,status
+No Tags Link,https://notags.com/,1592332152,,unread`;
+
+      const file = createMockCSVFile(csvContent);
+
+      Object.defineProperty(pocketInput, "files", {
+        value: [file],
+        configurable: true,
+      });
+
+      global.alert = jest.fn();
+
+      pocketInput.dispatchEvent(new Event("change"));
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const setCall = chrome.storage.local.set.mock.calls[0][0];
+      const importedLink = setCall.links.find(
+        (l) => l.url === "https://notags.com/"
+      );
+      expect(importedLink.tags).toEqual([]);
+    });
+
+    test("should convert Unix timestamp to ISO date", async () => {
+      loadLinksScript();
+      await waitForInit();
+
+      const pocketInput = document.getElementById("pocket-import-input");
+      // 1582312900 = 2020-02-21 (date in UTC)
+      const csvContent = `title,url,time_added,tags,status
+Dated Link,https://dated.com/,1582312900,test,unread`;
+
+      const file = createMockCSVFile(csvContent);
+
+      Object.defineProperty(pocketInput, "files", {
+        value: [file],
+        configurable: true,
+      });
+
+      global.alert = jest.fn();
+
+      pocketInput.dispatchEvent(new Event("change"));
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const setCall = chrome.storage.local.set.mock.calls[0][0];
+      const importedLink = setCall.links.find(
+        (l) => l.url === "https://dated.com/"
+      );
+      // Check that the date is correctly parsed (verify it's an ISO string from the timestamp)
+      const parsedDate = new Date(importedLink.savedAt);
+      expect(parsedDate.getTime()).toBe(1582312900 * 1000);
+      expect(importedLink.savedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/);
+    });
+
+    test("should skip duplicate URLs from Pocket import", async () => {
+      loadLinksScript();
+      await waitForInit();
+
+      const pocketInput = document.getElementById("pocket-import-input");
+      const csvContent = `title,url,time_added,tags,status
+Duplicate,https://mysite.com/page,1582312900,test,unread`;
+
+      const file = createMockCSVFile(csvContent);
+
+      Object.defineProperty(pocketInput, "files", {
+        value: [file],
+        configurable: true,
+      });
+
+      global.alert = jest.fn();
+
+      pocketInput.dispatchEvent(new Event("change"));
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(global.alert).toHaveBeenCalledWith(
+        "Imported 0 new links from Pocket."
+      );
+    });
+
+    test("should handle quoted fields with commas", async () => {
+      loadLinksScript();
+      await waitForInit();
+
+      const pocketInput = document.getElementById("pocket-import-input");
+      const csvContent = `title,url,time_added,tags,status
+"Title, with comma",https://comma.com/,1582312900,test,unread`;
+
+      const file = createMockCSVFile(csvContent);
+
+      Object.defineProperty(pocketInput, "files", {
+        value: [file],
+        configurable: true,
+      });
+
+      global.alert = jest.fn();
+
+      pocketInput.dispatchEvent(new Event("change"));
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const setCall = chrome.storage.local.set.mock.calls[0][0];
+      const importedLink = setCall.links.find(
+        (l) => l.url === "https://comma.com/"
+      );
+      expect(importedLink.title).toBe("Title, with comma");
+    });
+
+    test("should show error for empty CSV", async () => {
+      loadLinksScript();
+      await waitForInit();
+
+      const pocketInput = document.getElementById("pocket-import-input");
+      const csvContent = `title,url,time_added,tags,status`;
+
+      const file = createMockCSVFile(csvContent);
+
+      Object.defineProperty(pocketInput, "files", {
+        value: [file],
+        configurable: true,
+      });
+
+      global.alert = jest.fn();
+
+      pocketInput.dispatchEvent(new Event("change"));
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(global.alert).toHaveBeenCalledWith(
+        "No links found in the CSV file."
+      );
+    });
+
+    test("should convert tags to lowercase", async () => {
+      loadLinksScript();
+      await waitForInit();
+
+      const pocketInput = document.getElementById("pocket-import-input");
+      const csvContent = `title,url,time_added,tags,status
+Case Test,https://case.com/,1582312900,UPPERCASE|MixedCase,unread`;
+
+      const file = createMockCSVFile(csvContent);
+
+      Object.defineProperty(pocketInput, "files", {
+        value: [file],
+        configurable: true,
+      });
+
+      global.alert = jest.fn();
+
+      pocketInput.dispatchEvent(new Event("change"));
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const setCall = chrome.storage.local.set.mock.calls[0][0];
+      const importedLink = setCall.links.find(
+        (l) => l.url === "https://case.com/"
+      );
+      expect(importedLink.tags).toEqual(["uppercase", "mixedcase"]);
     });
   });
 
