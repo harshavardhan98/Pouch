@@ -300,6 +300,18 @@ header {
   gap: 12px;
 }
 
+.logo-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
 header h1 {
   font-size: 24px;
   font-weight: 700;

@@ -9,8 +9,45 @@
 <body>
   <div class="container">
     <header>
-      <h1>Pouch</h1>
+      <div class="logo-row">
+        <div class="logo" id="logo">
+          <svg viewBox="0 0 40 40" class="kangaroo-icon">
+            <!-- Kangaroo silhouette -->
+            <circle cx="20" cy="20" r="18" fill="#f97316"/>
+            <g fill="#fff" transform="scale(0.3) translate(6, 8)">
+              <ellipse cx="85" cy="32" rx="14" ry="12"/>
+              <ellipse cx="92" cy="20" rx="5" ry="10"/>
+              <ellipse cx="60" cy="62" rx="28" ry="32"/>
+              <path d="M32 75 Q15 85, 18 105 Q22 108, 28 100 Q35 88, 42 82"/>
+              <ellipse cx="55" cy="100" rx="18" ry="10" transform="rotate(-15 55 100)"/>
+              <ellipse cx="80" cy="65" rx="6" ry="14" transform="rotate(25 80 65)"/>
+            </g>
+            <ellipse cx="19" cy="25" rx="4" ry="3.5" fill="#fdba74" stroke="#fff" stroke-width="0.5"/>
+          </svg>
+        </div>
+        <h1>Pouch</h1>
+      </div>
     </header>
+
+    <!-- Save Animation Overlay -->
+    <div id="save-animation" class="save-animation hidden">
+      <div class="pouch-container">
+        <svg viewBox="0 0 100 100" class="pouch-svg">
+          <!-- Pouch shape -->
+          <path id="pouch-path" d="M20 40 Q20 80, 50 85 Q80 80, 80 40 Q80 30, 50 30 Q20 30, 20 40"
+                fill="#f97316" stroke="#ea580c" stroke-width="2"/>
+          <!-- Pouch opening -->
+          <ellipse cx="50" cy="35" rx="25" ry="8" fill="#fdba74"/>
+        </svg>
+        <div class="falling-link" id="falling-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+        </div>
+      </div>
+      <p class="save-text">Saved!</p>
+    </div>
 
     <div id="status" class="status hidden"></div>
 
