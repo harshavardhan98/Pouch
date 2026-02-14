@@ -1,10 +1,13 @@
 # Pouch
 
-<img src="icons/icon-cropped.svg" alt="Pouch Logo" width="80">
+<p>
+  <img src="icons/icon-cropped.svg" alt="Pouch Logo" width="48" align="left" style="margin-right: 12px;">
+  <strong>A simple, privacy-focused Chrome extension for saving and organizing links.</strong><br>
+  Like a kangaroo's pouch, it keeps your important links safe and close at hand.
+</p>
+<br clear="left">
 
-A simple, privacy-focused Chrome extension for saving and organizing links. Like a kangaroo's pouch, it keeps your important links safe and close at hand.
-
-<div style="position: relative; padding-bottom: 62.5%; height: 0;"><iframe src="https://www.loom.com/embed/fc2e73dae37b4f6a8e3668828bfc5154" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
+[![Watch the demo](https://cdn.loom.com/sessions/thumbnails/fc2e73dae37b4f6a8e3668828bfc5154-with-play.gif)](https://www.loom.com/share/fc2e73dae37b4f6a8e3668828bfc5154)
 
 ## Features
 
