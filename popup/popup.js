@@ -5,6 +5,7 @@ const tagList = document.getElementById("tag-list");
 const saveBtn = document.getElementById("save-btn");
 const viewAll = document.getElementById("view-all");
 const status = document.getElementById("status");
+const saveAnimation = document.getElementById("save-animation");
 
 let currentTab = null;
 let tags = [];
@@ -29,6 +30,21 @@ async function init() {
 function showStatus(message, type) {
   status.textContent = message;
   status.className = `status ${type}`;
+}
+
+function playSaveAnimation() {
+  return new Promise((resolve) => {
+    // Show and play animation
+    saveAnimation.classList.remove("hidden");
+    saveAnimation.classList.add("playing");
+
+    // Hide after animation completes
+    setTimeout(() => {
+      saveAnimation.classList.remove("playing");
+      saveAnimation.classList.add("hidden");
+      resolve();
+    }, 1200);
+  });
 }
 
 function renderTags() {
@@ -85,6 +101,7 @@ saveBtn.addEventListener("click", async () => {
       data: { tags },
     });
     if (result.success) {
+      await playSaveAnimation();
       showStatus("Tags updated!", "success");
     }
   } else {
@@ -98,7 +115,9 @@ saveBtn.addEventListener("click", async () => {
     });
 
     if (result.success) {
+      await playSaveAnimation();
       showStatus("Link saved!", "success");
+      saveBtn.textContent = "Update Tags";
     } else if (result.reason === "duplicate") {
       showStatus("This link is already saved", "info");
     }

@@ -9,8 +9,33 @@
 <body>
   <div class="container">
     <header>
-      <h1>Pouch</h1>
+      <div class="logo-row">
+        <div class="logo" id="logo">
+          <img src="../icons/icon-cropped.svg" alt="Pouch" class="kangaroo-icon" />
+        </div>
+        <h1>Pouch</h1>
+      </div>
     </header>
+
+    <!-- Save Animation Overlay -->
+    <div id="save-animation" class="save-animation hidden">
+      <div class="pouch-container">
+        <svg viewBox="0 0 100 100" class="pouch-svg">
+          <!-- Pouch shape -->
+          <path id="pouch-path" d="M20 40 Q20 80, 50 85 Q80 80, 80 40 Q80 30, 50 30 Q20 30, 20 40"
+                fill="#f97316" stroke="#ea580c" stroke-width="2"/>
+          <!-- Pouch opening -->
+          <ellipse cx="50" cy="35" rx="25" ry="8" fill="#fdba74"/>
+        </svg>
+        <div class="falling-link" id="falling-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+        </div>
+      </div>
+      <p class="save-text">Saved!</p>
+    </div>
 
     <div id="status" class="status hidden"></div>
 
