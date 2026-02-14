@@ -67,28 +67,37 @@ header h1 {
   pointer-events: none;
 }
 
-.pouch-container {
+.animation-container {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 140px;
+  height: 140px;
 }
 
-.pouch-svg {
+.kangaroo-wrapper {
   width: 100%;
   height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kangaroo-icon {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
 }
 
 .falling-link {
   position: absolute;
-  top: -20px;
+  top: -30px;
   left: 50%;
   transform: translateX(-50%);
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   background: #eff6ff;
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.3);
   opacity: 0;
 }
 
@@ -100,44 +109,52 @@ header h1 {
 /* Animation keyframes */
 @keyframes dropIntoPouch {
   0% {
-    top: -40px;
+    top: -30px;
     opacity: 1;
-    transform: translateX(-50%) scale(1);
+    transform: translateX(-50%) scale(1) rotate(0deg);
+  }
+  40% {
+    top: 50px;
+    opacity: 1;
+    transform: translateX(-50%) scale(1) rotate(10deg);
   }
   60% {
-    top: 30px;
+    top: 70px;
     opacity: 1;
-    transform: translateX(-50%) scale(1);
+    transform: translateX(-30%) scale(0.85) rotate(-5deg);
   }
   80% {
-    top: 42px;
-    opacity: 1;
-    transform: translateX(-50%) scale(0.6);
+    top: 80px;
+    opacity: 0.7;
+    transform: translateX(-40%) scale(0.5) rotate(0deg);
   }
   100% {
-    top: 50px;
+    top: 85px;
     opacity: 0;
-    transform: translateX(-50%) scale(0.2);
+    transform: translateX(-40%) scale(0.2) rotate(0deg);
   }
 }
 
-@keyframes pouchBounce {
-  0%, 50% {
-    transform: scale(1);
+@keyframes kangarooBounce {
+  0%, 40% {
+    transform: scale(1) translateY(0);
   }
-  65% {
-    transform: scale(1.15, 0.85);
+  55% {
+    transform: scale(1.08, 0.92) translateY(2px);
   }
-  80% {
-    transform: scale(0.95, 1.08);
+  70% {
+    transform: scale(0.95, 1.05) translateY(-3px);
+  }
+  85% {
+    transform: scale(1.02, 0.98) translateY(1px);
   }
   100% {
-    transform: scale(1);
+    transform: scale(1) translateY(0);
   }
 }
 
 @keyframes fadeInText {
-  0%, 60% {
+  0%, 50% {
     opacity: 0;
     transform: translateY(10px);
   }
@@ -148,22 +165,22 @@ header h1 {
 }
 
 .save-animation.playing .falling-link {
-  animation: dropIntoPouch 0.7s ease-in forwards;
+  animation: dropIntoPouch 0.8s ease-in forwards;
 }
 
-.save-animation.playing .pouch-svg {
-  animation: pouchBounce 0.5s ease-out 0.45s;
+.save-animation.playing .kangaroo-icon {
+  animation: kangarooBounce 0.6s ease-out 0.5s;
 }
 
 .save-animation.playing .save-text {
-  animation: fadeInText 0.7s ease-out forwards;
+  animation: fadeInText 0.8s ease-out forwards;
 }
 
 .save-text {
-  margin-top: 16px;
+  margin-top: 12px;
   font-size: 18px;
   font-weight: 600;
-  color: #f97316;
+  color: #1565c0;
   opacity: 0;
 }
 
