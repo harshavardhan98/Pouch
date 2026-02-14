@@ -7,7 +7,7 @@
 </p>
 <br clear="left">
 
-[![Watch the demo](https://cdn.loom.com/sessions/thumbnails/fc2e73dae37b4f6a8e3668828bfc5154-with-play.gif)](https://www.loom.com/share/fc2e73dae37b4f6a8e3668828bfc5154)
+[![Watch the demo](https://cdn.loom.com/sessions/thumbnails/fc2e73dae37b4f6a8e3668828bfc5154-95bd8745fb35d949-full-play.gif)](https://www.loom.com/share/fc2e73dae37b4f6a8e3668828bfc5154)
 
 ## Features
 
