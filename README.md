@@ -4,6 +4,8 @@
 
 A simple, privacy-focused Chrome extension for saving and organizing links. Like a kangaroo's pouch, it keeps your important links safe and close at hand.
 
+<div style="position: relative; padding-bottom: 62.5%; height: 0;"><iframe src="https://www.loom.com/embed/fc2e73dae37b4f6a8e3668828bfc5154" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
+
 ## Features
 
 - **Save Links Instantly** - Click the Pouch icon in your toolbar to save the current page
